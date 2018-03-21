@@ -17,9 +17,82 @@ import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.HttpHeaderParser;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+
 public class MainActivity extends AppCompatActivity {
 
     private TextView mTextMessage;
+
+    private void postLocation(Location location) {
+        try {
+            RequestQueue requestQueue = Volley.newRequestQueue(this);
+            String URL = "http://iot.ajithv.in/api/Locations";
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("latitude", location.getLatitude());
+            jsonBody.put("longitude", location.getLongitude());
+            jsonBody.put("name", "Ajith");
+            long time = System.currentTimeMillis()/1000;
+            jsonBody.put("time", time);
+            jsonBody.put("type", "mobile");
+            jsonBody.put("accuracy", location.getAccuracy());
+            final String mRequestBody = jsonBody.toString();
+
+            StringRequest stringRequest = new StringRequest(Request.Method.POST, URL, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    Log.i("LOG_VOLLEY", response);
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e("LOG_VOLLEY", error.toString());
+                }
+            }) {
+                @Override
+                public String getBodyContentType() {
+                    return "application/json; charset=utf-8";
+                }
+
+                @Override
+                public byte[] getBody() throws AuthFailureError {
+                    try {
+                        return mRequestBody == null ? null : mRequestBody.getBytes("utf-8");
+                    } catch (UnsupportedEncodingException uee) {
+                        Log.d("app", "Unsupported Encoding ");
+                        return null;
+                    }
+                }
+
+                @Override
+                protected Response<String> parseNetworkResponse(NetworkResponse response) {
+                    String responseString = "";
+                    if (response != null) {
+
+                        responseString = String.valueOf(response.statusCode);
+
+                    }
+                    return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
+                }
+            };
+
+            requestQueue.add(stringRequest);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -51,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
         mTextMessage = (TextView) findViewById(R.id.message);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-        boolean always = true;
+        boolean always = false;
         if (always) {
             return;
         }
@@ -67,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000, 10, ll);
+        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60000, 0, ll);
     }
 
     private class mylocationlistener implements LocationListener {
@@ -79,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this,
                         location.getLatitude() + "" + location.getLongitude(),
                         Toast.LENGTH_LONG).show();
+                postLocation(location);
             }
         }
 
