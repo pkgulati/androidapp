@@ -3,17 +3,21 @@ package com.example.kpraveen.android5;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,7 +38,9 @@ import java.io.UnsupportedEncodingException;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView mTextMessage;
+    private WebView mWebView;
+
+    String userName;
 
     private void postLocation(Location location) {
         try {
@@ -43,7 +49,11 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonBody = new JSONObject();
             jsonBody.put("latitude", location.getLatitude());
             jsonBody.put("longitude", location.getLongitude());
-            jsonBody.put("name", "Ajith");
+            String temp = userName;
+            if((temp == null) || (temp.isEmpty())) {
+                temp = "test23";
+            }
+            jsonBody.put("name", userName);
             long time = System.currentTimeMillis()/1000;
             jsonBody.put("time", time);
             jsonBody.put("type", "mobile");
@@ -101,13 +111,12 @@ public class MainActivity extends AppCompatActivity {
         public boolean onNavigationItemSelected(@NonNull MenuItem item) {
             switch (item.getItemId()) {
                 case R.id.navigation_home:
-                    mTextMessage.setText(R.string.title_home);
+                    mWebView.loadUrl("http://iot.ajithv.in");
                     return true;
                 case R.id.navigation_dashboard:
-                    mTextMessage.setText(R.string.title_dashboard);
+                    mWebView.loadUrl("http://iot.ajithv.in/map.html");
                     return true;
                 case R.id.navigation_settings:
-                    //mTextMessage.setText(R.string._notifications);
                     Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
                     startActivityForResult(intent, 1);
                     return true;
@@ -121,16 +130,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bottom_nav);
 
-        mTextMessage = (TextView) findViewById(R.id.message);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+
+        userName = sharedPref.getString("userName", "");
+        mWebView = (WebView) findViewById(R.id.webview);
+        mWebView.setWebChromeClient(new WebChromeClient());
+        mWebView.getSettings().setJavaScriptEnabled(true);
+        Log.d("mainactivityOnCreate", "userName " + userName);
+        mWebView.loadUrl("http://iot.ajithv.in");
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-        boolean always = false;
-        if (always) {
-            return;
-        }
         LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         LocationListener ll = new mylocationlistener();
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+           Log.d("pkg", "permission not given for location");
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
@@ -140,7 +153,8 @@ public class MainActivity extends AppCompatActivity {
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60000, 0, ll);
+        Toast.makeText(MainActivity.this, "Requesting Location Update", Toast.LENGTH_LONG).show();
+        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15000, 0, ll);
     }
 
     private class mylocationlistener implements LocationListener {
